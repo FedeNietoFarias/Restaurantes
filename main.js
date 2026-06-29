@@ -192,38 +192,75 @@ async function renderMenu() {
   if (!tabsEl || !contenidoEl) return;
 
   contenidoEl.innerHTML = '<p class="menu__loading">Cargando la carta...</p>';
+  tabsEl.innerHTML = '';
 
   let primeraActiva = false;
+  const secciones = [];
 
   for (const tab of MENU_TABS) {
     const rows = await fetchSheet(tab.key);
     if (!rows || rows.length < 2) continue;
 
+    // Encontrar dinámicamente la primera fila de datos reales
+    // (la primera fila donde ninguna columna contiene "NOMBRE", "DESCRIPCIÓN", "PRECIO",
+    //  ni empieza con emoji, ni contiene "Podés agregar")
+    const CABECERAS = ['nombre', 'descripción', 'precio', 'podés agregar', 'no toques'];
+
+    function esFilaCabecera(row) {
+      return row.some(col =>
+        CABECERAS.some(cab => col.toLowerCase().includes(cab))
+      );
+    }
+
+    const primerFilaDatos = rows.findIndex((r, i) => i > 0 && r[0] && !esFilaCabecera(r));
+    if (primerFilaDatos === -1) continue;
+
+    const platos = rows.slice(primerFilaDatos).filter(r => r[0] && !esFilaCabecera(r));
+    if (!platos.length) continue;
+
+    const sectionId = `seccion-${tab.key}`;
+    const tabId = `tab-${tab.key}`;
+
     const btnTab = document.createElement('button');
     btnTab.className = 'menu__tab' + (!primeraActiva ? ' activo' : '');
+    btnTab.id = tabId;
     btnTab.textContent = tab.label;
     btnTab.setAttribute('role', 'tab');
-    btnTab.setAttribute('aria-controls', `panel-${tab.key}`);
-    btnTab.dataset.panel = tab.key;
+    btnTab.setAttribute('aria-controls', sectionId);
+    btnTab.setAttribute('aria-selected', String(!primeraActiva));
+    btnTab.dataset.section = sectionId;
+    btnTab.dataset.key = tab.key;
     tabsEl.appendChild(btnTab);
 
-    const panel = document.createElement('div');
-    panel.className = 'menu__panel' + (!primeraActiva ? ' activo' : '');
-    panel.id = `panel-${tab.key}`;
+    const panel = document.createElement('section');
+    panel.className = 'menu__panel';
+    panel.id = sectionId;
     panel.setAttribute('role', 'tabpanel');
+    panel.setAttribute('aria-labelledby', tabId);
+    panel.dataset.menuSection = tab.key;
 
-    const platos = rows.slice(1).filter(r => r[0]);
-    panel.innerHTML = platos.map(r => `
-      <div class="plato">
-        <div class="plato__info">
-          <p class="plato__nombre">${escapeHtml(r[0] || '')}</p>
-          ${r[1] ? `<p class="plato__descripcion">${escapeHtml(r[1])}</p>` : ''}
-        </div>
-        ${r[2] ? `<span class="plato__precio">${escapeHtml(r[2])}</span>` : ''}
+    panel.innerHTML = `
+      <h3 class="menu__seccion-titulo">${escapeHtml(tab.label)}</h3>
+      <div class="menu__grid">
+        ${platos.map(r => {
+          const nombre = r[0] || '';
+          const precio = r.length > 1 ? r[r.length - 1] : '';
+          const descripcion = r.length > 2 ? r.slice(1, r.length - 1).join(', ') : '';
+          return `
+            <div class="plato">
+              <div class="plato__info">
+                <p class="plato__nombre">${escapeHtml(nombre)}</p>
+                ${descripcion ? `<p class="plato__descripcion">${escapeHtml(descripcion)}</p>` : ''}
+              </div>
+              ${precio ? `<span class="plato__precio">${escapeHtml(precio)}</span>` : ''}
+            </div>
+          `;
+        }).join('')}
       </div>
-    `).join('');
+    `;
 
     contenidoEl.appendChild(panel);
+    secciones.push(panel);
     primeraActiva = true;
   }
 
@@ -235,15 +272,79 @@ async function renderMenu() {
   const loadingEl = contenidoEl.querySelector('.menu__loading');
   if (loadingEl) loadingEl.remove();
 
+  const setActiveTab = (key) => {
+    tabsEl.querySelectorAll('.menu__tab').forEach(btn => {
+      const isActive = btn.dataset.key === key;
+      btn.classList.toggle('activo', isActive);
+      btn.setAttribute('aria-selected', String(isActive));
+    });
+  };
+
+  const getStickyOffset = () => {
+    const navbarHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navbar-h')) || 68;
+    return navbarHeight + tabsEl.offsetHeight + 16;
+  };
+
+  const updateScrollMargins = () => {
+    const offset = `${getStickyOffset()}px`;
+    secciones.forEach(section => { section.style.scrollMarginTop = offset; });
+  };
+
+  updateScrollMargins();
+
   tabsEl.addEventListener('click', (e) => {
     const btn = e.target.closest('.menu__tab');
     if (!btn) return;
-    tabsEl.querySelectorAll('.menu__tab').forEach(b => b.classList.remove('activo'));
-    contenidoEl.querySelectorAll('.menu__panel').forEach(p => p.classList.remove('activo'));
-    btn.classList.add('activo');
-    const panel = document.getElementById(`panel-${btn.dataset.panel}`);
-    if (panel) panel.classList.add('activo');
+
+    const section = document.getElementById(btn.dataset.section);
+    if (!section) return;
+
+    setActiveTab(btn.dataset.key);
+    updateScrollMargins();
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
+
+  if ('IntersectionObserver' in window) {
+    let scrollSpyObserver;
+    let resizeTimer;
+
+    const createScrollSpy = () => {
+      if (scrollSpyObserver) scrollSpyObserver.disconnect();
+
+      scrollSpyObserver = new IntersectionObserver((entries) => {
+        const visibles = entries
+          .filter(entry => entry.isIntersecting)
+          .sort((a, b) => {
+            const offset = getStickyOffset();
+            return Math.abs(a.boundingClientRect.top - offset) - Math.abs(b.boundingClientRect.top - offset);
+          });
+
+        if (visibles[0]) setActiveTab(visibles[0].target.dataset.menuSection);
+      }, {
+        rootMargin: `-${getStickyOffset()}px 0px -20% 0px`,
+        threshold: 0.2,
+      });
+
+      secciones.forEach(section => scrollSpyObserver.observe(section));
+    };
+
+    createScrollSpy();
+
+    window.addEventListener('resize', () => {
+      updateScrollMargins();
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(createScrollSpy, 150);
+    }, { passive: true });
+  } else {
+    window.addEventListener('scroll', () => {
+      const offset = getStickyOffset();
+      const activa = secciones
+        .map(section => ({ section, distance: Math.abs(section.getBoundingClientRect().top - offset) }))
+        .sort((a, b) => a.distance - b.distance)[0];
+
+      if (activa) setActiveTab(activa.section.dataset.menuSection);
+    }, { passive: true });
+  }
 }
 
 function initNavbar() {

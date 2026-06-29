@@ -88,12 +88,32 @@ ul { list-style: none; }
 
 .menu { padding: 100px 0; background: var(--color-bg-alt); }
 .menu .section-titulo { margin-bottom: 40px; }
-.menu__tabs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 48px; }
+.menu__tabs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin-bottom: 48px;
+  position: sticky;
+  top: var(--navbar-h);
+  z-index: 100;
+  background: var(--color-bg-alt);
+  padding: 14px 20px;
+  margin-left: -20px;
+  margin-right: -20px;
+  box-shadow: 0 2px 12px rgba(44,24,16,.06);
+}
+.menu__tabs::-webkit-scrollbar { display: none; }
 .menu__tab { padding: 10px 24px; border-radius: var(--radius-full); font-size: .875rem; font-weight: 500; cursor: pointer; transition: var(--transition); border: 2px solid var(--color-border); background: var(--color-white); color: var(--color-text-light); }
 .menu__tab:hover { border-color: var(--color-primary); color: var(--color-primary); }
 .menu__tab.activo { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-white); }
-.menu__panel { display: none; }
-.menu__panel.activo { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; animation: fadeIn .3s ease; }
+.menu__panel { display: block; scroll-margin-top: calc(var(--navbar-h) + 92px); }
+.menu__panel + .menu__panel { margin-top: 56px; padding-top: 48px; border-top: 1px solid var(--color-border); }
+.menu__seccion-titulo { font-family: var(--font-display); font-size: clamp(1.35rem, 3vw, 1.9rem); font-weight: 700; color: var(--color-text); margin-bottom: 24px; line-height: 1.2; text-align: center; }
+.menu__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
 .plato { background: var(--color-white); border-radius: var(--radius-md); padding: 24px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; box-shadow: var(--shadow-sm); transition: box-shadow var(--transition), transform var(--transition); border: 1px solid var(--color-border); }
 .plato:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 .plato__info { flex: 1; }
@@ -161,7 +181,7 @@ ul { list-style: none; }
   .hero__ctas { flex-direction: column; align-items: center; }
   .nosotros, .menu, .ubicacion, .contacto { padding: 72px 0; }
   .contacto__form { padding: 24px 20px; }
-  .menu__panel.activo { grid-template-columns: 1fr; }
+  .menu__grid { grid-template-columns: 1fr; }
   .footer__links { gap: 16px; }
   .whatsapp-float { bottom: 20px; right: 16px; width: 50px; height: 50px; }
   .ubicacion__acciones { flex-direction: column; }

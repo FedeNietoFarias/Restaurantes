@@ -80,6 +80,25 @@ function applyConfig(cfg) {
   const metaDesc = document.getElementById('meta-description');
   if (metaDesc) metaDesc.setAttribute('content', cfg.tagline || '');
 
+  // Favicon y Open Graph: usa logo si existe, sino la imagen del hero como fallback
+  const iconoUrl = cfg.logo_url || cfg.hero_imagen || '';
+  const favicon = document.getElementById('favicon');
+  if (favicon && iconoUrl) favicon.href = iconoUrl;
+
+  const appleIcon = document.getElementById('apple-icon');
+  if (appleIcon && iconoUrl) appleIcon.href = iconoUrl;
+
+  const ogTitle = document.getElementById('og-title');
+  if (ogTitle) ogTitle.setAttribute('content', nombre);
+
+  const ogDescription = document.getElementById('og-description');
+  if (ogDescription) ogDescription.setAttribute('content', cfg.tagline || '');
+
+  const ogImage = document.getElementById('og-image');
+  if (ogImage && (cfg.hero_imagen || cfg.logo_url)) {
+    ogImage.setAttribute('content', cfg.hero_imagen || cfg.logo_url);
+  }
+
   const navNombre = document.getElementById('nav-nombre');
   if (cfg.logo_url && navNombre) {
     const logoWrap = document.getElementById('nav-logo');

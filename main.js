@@ -332,6 +332,18 @@ async function renderMenu() {
       const isActive = btn.dataset.key === key;
       btn.classList.toggle('activo', isActive);
       btn.setAttribute('aria-selected', String(isActive));
+
+      if (isActive) {
+        // Centrar el tab activo dentro del scroll horizontal del contenedor
+        const tabRect = btn.getBoundingClientRect();
+        const containerRect = tabsEl.getBoundingClientRect();
+        const scrollOffset = tabRect.left - containerRect.left - (containerRect.width / 2) + (tabRect.width / 2);
+
+        tabsEl.scrollBy({
+          left: scrollOffset,
+          behavior: 'smooth',
+        });
+      }
     });
   };
 

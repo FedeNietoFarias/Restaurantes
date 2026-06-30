@@ -165,17 +165,13 @@ function applyConfig(cfg) {
       const url = (value || '').trim();
       return /^https?:\/\//i.test(url) ? url : '';
     };
-    const demoRedes = {
-      instagram: 'https://www.instagram.com/rincondepepe',
-      facebook: 'https://www.facebook.com/rincondepepe',
-      x: 'https://x.com/rincondepepe',
-      tiktok: 'https://www.tiktok.com/@rincondepepe',
-    };
+
     const redes = [];
-    const instagramUrl = socialUrl(cfg.instagram) || demoRedes.instagram;
-    const facebookUrl = socialUrl(cfg.facebook) || demoRedes.facebook;
-    const xUrl = socialUrl(cfg.x) || socialUrl(cfg.twitter) || demoRedes.x;
-    const tiktokUrl = socialUrl(cfg.tiktok) || demoRedes.tiktok;
+    const instagramUrl = socialUrl(cfg.instagram);
+    const facebookUrl  = socialUrl(cfg.facebook);
+    const xUrl          = socialUrl(cfg.x) || socialUrl(cfg.twitter);
+    const tiktokUrl     = socialUrl(cfg.tiktok);
+
     if (instagramUrl) redes.push({ url: instagramUrl, label: 'Instagram', icon: 'instagram' });
     if (facebookUrl)  redes.push({ url: facebookUrl,  label: 'Facebook',  icon: 'facebook' });
     if (xUrl)         redes.push({ url: xUrl,         label: 'X',         icon: 'x' });
@@ -211,6 +207,31 @@ async function renderMenu() {
 
   let primeraActiva = false;
   const secciones = [];
+
+  function agruparPorSubcategoria(platos) {
+    const grupos = [];
+    let grupoActual = { subcategoria: null, items: [] };
+
+    for (const r of platos) {
+      const nombre = r[0] || '';
+      const precio = r.length > 1 ? r[r.length - 1] : '';
+      const descripcion = r.length > 2 ? r.slice(1, r.length - 1).join(', ') : '';
+      const esSubcategoria = nombre && !descripcion && !precio;
+
+      if (esSubcategoria) {
+        if (grupoActual.items.length > 0 || grupoActual.subcategoria) {
+          grupos.push(grupoActual);
+        }
+        grupoActual = { subcategoria: nombre, items: [] };
+      } else {
+        grupoActual.items.push({ nombre, descripcion, precio });
+      }
+    }
+    if (grupoActual.items.length > 0 || grupoActual.subcategoria) {
+      grupos.push(grupoActual);
+    }
+    return grupos;
+  }
 
   for (const tab of MENU_TABS) {
     const rows = await fetchSheet(tab.key);
@@ -254,24 +275,24 @@ async function renderMenu() {
     panel.setAttribute('aria-labelledby', tabId);
     panel.dataset.menuSection = tab.key;
 
+    const grupos = agruparPorSubcategoria(platos);
+
     panel.innerHTML = `
       <h3 class="menu__seccion-titulo">${escapeHtml(tab.label)}</h3>
-      <div class="menu__grid">
-        ${platos.map(r => {
-          const nombre = r[0] || '';
-          const precio = r.length > 1 ? r[r.length - 1] : '';
-          const descripcion = r.length > 2 ? r.slice(1, r.length - 1).join(', ') : '';
-          return `
+      ${grupos.map(grupo => `
+        ${grupo.subcategoria ? `<h4 class="menu__subcategoria">${escapeHtml(grupo.subcategoria)}</h4>` : ''}
+        <div class="menu__grid">
+          ${grupo.items.map(item => `
             <div class="plato">
               <div class="plato__info">
-                <p class="plato__nombre">${escapeHtml(nombre)}</p>
-                ${descripcion ? `<p class="plato__descripcion">${escapeHtml(descripcion)}</p>` : ''}
+                <p class="plato__nombre">${escapeHtml(item.nombre)}</p>
+                ${item.descripcion ? `<p class="plato__descripcion">${escapeHtml(item.descripcion)}</p>` : ''}
               </div>
-              ${precio ? `<span class="plato__precio">${escapeHtml(precio)}</span>` : ''}
+              ${item.precio ? `<span class="plato__precio">${escapeHtml(item.precio)}</span>` : ''}
             </div>
-          `;
-        }).join('')}
-      </div>
+          `).join('')}
+        </div>
+      `).join('')}
     `;
 
     contenidoEl.appendChild(panel);

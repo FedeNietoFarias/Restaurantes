@@ -161,12 +161,27 @@ function applyConfig(cfg) {
 
   const socialWrap = document.getElementById('footer-social');
   if (socialWrap) {
+    const socialUrl = (value) => {
+      const url = (value || '').trim();
+      return /^https?:\/\//i.test(url) ? url : '';
+    };
+    const demoRedes = {
+      instagram: 'https://www.instagram.com/rincondepepe',
+      facebook: 'https://www.facebook.com/rincondepepe',
+      x: 'https://x.com/rincondepepe',
+      tiktok: 'https://www.tiktok.com/@rincondepepe',
+    };
     const redes = [];
-    if (cfg.instagram) redes.push({ url: cfg.instagram, label: 'IG' });
-    if (cfg.facebook)  redes.push({ url: cfg.facebook,  label: 'FB' });
-    if (cfg.tiktok)    redes.push({ url: cfg.tiktok,    label: 'TK' });
+    const instagramUrl = socialUrl(cfg.instagram) || demoRedes.instagram;
+    const facebookUrl = socialUrl(cfg.facebook) || demoRedes.facebook;
+    const xUrl = socialUrl(cfg.x) || socialUrl(cfg.twitter) || demoRedes.x;
+    const tiktokUrl = socialUrl(cfg.tiktok) || demoRedes.tiktok;
+    if (instagramUrl) redes.push({ url: instagramUrl, label: 'Instagram', icon: 'instagram' });
+    if (facebookUrl)  redes.push({ url: facebookUrl,  label: 'Facebook',  icon: 'facebook' });
+    if (xUrl)         redes.push({ url: xUrl,         label: 'X',         icon: 'x' });
+    if (tiktokUrl)    redes.push({ url: tiktokUrl,    label: 'TikTok',    icon: 'tiktok' });
     socialWrap.innerHTML = redes.map(r => `
-      <a class="footer__social-link" href="${r.url}" target="_blank" rel="noopener" aria-label="${r.label}">${r.label}</a>
+      <a class="footer__social-link" href="${r.url}" target="_blank" rel="noopener" aria-label="${r.label}">${socialIcon(r.icon)}</a>
     `).join('');
   }
 
@@ -379,6 +394,16 @@ function darkenHex(hex, amount) {
   const g = Math.max(0, ((num >> 8) & 0xff) - amount);
   const b = Math.max(0, (num & 0xff) - amount);
   return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+}
+
+function socialIcon(icon) {
+  const icons = {
+    instagram: '<svg class="footer__social-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.3" fill="currentColor"/></svg>',
+    facebook: '<svg class="footer__social-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M14.2 8.1V6.4c0-.8.3-1.2 1.3-1.2h1.4V2.4c-.7-.1-1.5-.2-2.2-.2-2.6 0-4.3 1.6-4.3 4.5v1.4H7.9v3.1h2.5v10.6h3.8V11.2h2.6l.4-3.1h-3z"/></svg>',
+    x: '<svg class="footer__social-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M18.9 2.8h3.3l-7.3 8.3 8.6 11.3h-6.7l-5.2-6.8-6 6.8H2.3l7.8-8.9L1.9 2.8h6.9l4.7 6.2 5.4-6.2zm-1.2 17.6h1.8L7.8 4.7H5.9l11.8 15.7z"/></svg>',
+    tiktok: '<svg class="footer__social-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M15.8 3c.4 2.5 1.8 4 4.2 4.2v3.4c-1.4.1-2.7-.3-4.1-1.1v6.4c0 3.2-2.2 5.5-5.4 5.5-3.1 0-5.5-2.2-5.5-5.2 0-3.3 2.7-5.7 6-5.2v3.5c-1.5-.4-2.7.4-2.7 1.7 0 1.1.9 1.8 2 1.8 1.3 0 2.1-.8 2.1-2.5V3h3.4z"/></svg>',
+  };
+  return icons[icon] || '';
 }
 
 async function init() {

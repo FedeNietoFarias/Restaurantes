@@ -281,19 +281,30 @@ async function renderMenu(menuTabs, gids = {}) {
     return grupos;
   }
 
+  console.log('GIDs obtenidos:', gids);
   for (const tab of menuTabs) {
+    // DESPUÉS — usa gid si existe, sino fallback por nombre:
     const rows = await fetchSheet(tab.key, gids[tab.key] || null);
     if (!rows || rows.length < 2) continue;
 
-    // Encontrar dinámicamente la primera fila de datos reales
-    // (la primera fila donde ninguna columna contiene "NOMBRE", "DESCRIPCIÓN", "PRECIO",
-    //  ni empieza con emoji, ni contiene "Podés agregar")
-    const CABECERAS = ['nombre', 'descripción', 'precio', 'podés agregar', 'no toques'];
-
-    function esFilaCabecera(row) {
-      return row.some(col =>
-        CABECERAS.some(cab => col.toLowerCase().includes(cab))
+    // Si no hay gid (htmlview bloqueado por CORS en localhost),
+    // validar que los datos son realmente una pestaña de menú y no CONFIG.
+    // CONFIG tiene 2 columnas, las pestañas de menú tienen 3.
+    if (!gids[tab.key]) {
+      // Verificar que tiene la fila de cabecera de menú: NOMBRE | DESCRIPCIÓN | PRECIO
+      // CONFIG tiene CLAVE | VALOR | DESCRIPCIÓN — nunca pasa esta validación
+      const tieneHeaderMenu = rows.some(r =>
+        r.length >= 3 &&
+        r[0].toLowerCase().includes('nombre') &&
+        r[1].toLowerCase().includes('descripci') &&
+        r[2].toLowerCase().includes('precio')
       );
+      if (!tieneHeaderMenu) continue;
+    }
+
+    const CABECERAS = ['nombre', 'descripción', 'precio', 'podés agregar', 'no toques'];
+    function esFilaCabecera(row) {
+      return row.some(col => CABECERAS.some(cab => col.toLowerCase().includes(cab)));
     }
 
     const primerFilaDatos = rows.findIndex((r, i) => i > 0 && r[0] && !esFilaCabecera(r));

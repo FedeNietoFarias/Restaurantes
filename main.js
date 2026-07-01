@@ -12,15 +12,12 @@
 
 const SHEET_ID = '1HxC_VN6s2UbG1U1SxNIk-pmWv5xR0QeZtPLc4JoLrkA';
 
-const MENU_TABS = [
-  { key: 'ENTRADAS',    label: 'Entradas' },
-  { key: 'PRINCIPALES', label: 'Principales' },
-  { key: 'POSTRES',     label: 'Postres' },
-  { key: 'BEBIDAS',     label: 'Bebidas' },
-];
-
-function sheetUrl(sheetName) {
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+function sheetUrl(sheetName, gid) {
+  if (gid) {
+    return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+  }
+  const cacheBuster = Date.now();
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&_=${cacheBuster}`;
 }
 
 function parseCsv(text) {
@@ -48,16 +45,17 @@ function parseCsv(text) {
   return rows;
 }
 
-async function fetchSheet(sheetName) {
+async function fetchSheet(sheetName, gid = null) {
+  const url = sheetUrl(sheetName, gid);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
   try {
-    const res = await fetch(sheetUrl(sheetName), { signal: controller.signal });
+    const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
     return parseCsv(text);
   } catch (e) {
-    console.warn(`No se pudo cargar la pestaña "${sheetName}":`, e.message);
+    console.warn(`Error cargando "${sheetName}":`, e.message);
     return null;
   } finally {
     clearTimeout(timeout);
@@ -216,7 +214,38 @@ function initForm(waBase, nombreRestaurante) {
   });
 }
 
-async function renderMenu() {
+function construirMenuTabs(cfg) {
+  const raw = cfg.secciones_menu || 'ENTRADAS, PRINCIPALES, POSTRES, BEBIDAS';
+  return raw.split(',')
+    .map(nombre => nombre.trim())
+    .filter(nombre => nombre.length > 0)
+    .map(nombre => ({ key: nombre, label: nombre }));
+}
+
+async function obtenerGids() {
+  try {
+    const res = await fetch(
+      `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (!res.ok) return {};
+    const html = await res.text();
+    const gids = {};
+    const regex = /#gid=(\d+)[^>]*>([^<]+)</g;
+    let match;
+    while ((match = regex.exec(html)) !== null) {
+      const gid = match[1];
+      const nombre = match[2].trim();
+      if (nombre && gid) gids[nombre] = gid;
+    }
+    return gids;
+  } catch (e) {
+    console.warn('No se pudo obtener gids:', e.message);
+    return {};
+  }
+}
+
+async function renderMenu(menuTabs, gids = {}) {
   const tabsEl      = document.getElementById('menu-tabs');
   const contenidoEl = document.getElementById('menu-contenido');
   if (!tabsEl || !contenidoEl) return;
@@ -252,8 +281,8 @@ async function renderMenu() {
     return grupos;
   }
 
-  for (const tab of MENU_TABS) {
-    const rows = await fetchSheet(tab.key);
+  for (const tab of menuTabs) {
+    const rows = await fetchSheet(tab.key, gids[tab.key] || null);
     if (!rows || rows.length < 2) continue;
 
     // Encontrar dinámicamente la primera fila de datos reales
@@ -461,16 +490,18 @@ function socialIcon(icon) {
 async function init() {
   initNavbar();
 
-  const configRows = await fetchSheet('CONFIG');
+  const configRows = await fetchSheet('CONFIG', null);
+  let cfg = {};
   if (configRows) {
-    const cfg = {};
     for (const row of configRows) {
       if (row[0] && row[1]) cfg[row[0].toLowerCase().trim()] = row[1].trim();
     }
     applyConfig(cfg);
   }
 
-  await renderMenu();
+  const gids = await obtenerGids();
+  const menuTabs = construirMenuTabs(cfg);
+  await renderMenu(menuTabs, gids);
 }
 
 document.addEventListener('DOMContentLoaded', init);

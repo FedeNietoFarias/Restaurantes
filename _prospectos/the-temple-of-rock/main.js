@@ -10,7 +10,7 @@
    Pestañas MENÚ: nombre | descripción | precio
 ═══════════════════════════════════════════════════════════ */
 
-const SHEET_ID = '1HxC_VN6s2UbG1U1SxNIk-pmWv5xR0QeZtPLc4JoLrkA';
+const SHEET_ID = '1C7zsAMkw7Pk5HEoiv3eOYr1wJ0rrEC0NDgiz6eAKzOk';
 // gid fijo de la pestaña CONFIG en el template original. Al copiar el Sheets
 // desde Drive, Google conserva los gids de cada pestaña, así que este valor
 // es estable para todos los clientes. Se usa como respaldo cuando obtenerGids()
